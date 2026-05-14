@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0d1117">
+<title>Metronome</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0d1117;
+  --surface: #161b22;
+  --surface2: #21262d;
+  --text: #e6edf3;
+  --text2: #8b949e;
+  --text3: #484f58;
+  --accent-downbeat: #ff6b6b;
+  --accent-beat: #58a6ff;
+  --accent-sub: #d2a8ff;
+  --btn-play: #238636;
+  --btn-play-hover: #2ea043;
+  --btn-stop: #da3633;
+  --btn-stop-hover: #f85149;
+  --border: #30363d;
+  --radius: 12px;
+  --radius-sm: 8px;
+}
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  overflow: hidden;
+}
+
+body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+}
+
+.app {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ---- BPM Display ---- */
+.bpm-section {
+  text-align: center;
+}
+
+.bpm-display {
+  font-size: clamp(72px, 20vw, 120px);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  transition: color 0.15s;
+}
+
+.bpm-display.active { color: var(--accent-beat); }
+
+.bpm-label {
+  font-size: 14px;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-top: 2px;
+}
+
+/* ---- BPM Controls ---- */
+.bpm-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.btn-bpm {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.1s, border-color 0.1s;
+  flex-shrink: 0;
+}
+.btn-bpm:active { background: var(--surface2); border-color: var(--text2); }
+
+.bpm-slider-wrap { flex: 1; }
+
+.bpm-slider {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--surface2);
+  outline: none;
+}
+.bpm-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--accent-beat);
+  cursor: pointer;
+  border: 2px solid var(--bg);
+  box-shadow: 0 0 0 2px var(--accent-beat);
+}
+
+/* ---- Settings Row ---- */
+.settings-row {
+  display: flex;
+  gap: 12px;
+}
+
+.setting-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.setting-label {
+  font-size: 11px;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* ---- Select ---- */
+.select-wrap {
+  position: relative;
+}
+.select-wrap select {
+  width: 100%;
+  height: 48px;
+  padding: 0 36px 0 14px;
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 600;
+  font-family: inherit;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+}
+.select-wrap::after {
+  content: '';
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid var(--text2);
+  pointer-events: none;
+}
+
+/* ---- Subdivision Buttons ---- */
+.sub-buttons {
+  display: flex;
+  gap: 4px;
+}
+
+.sub-btn {
+  flex: 1;
+  height: 48px;
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--border);
+  background: var(--surface);
+  color: var(--text3);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+}
+
+.sub-btn .sub-icon { font-size: 18px; line-height: 1; }
+.sub-btn .sub-label { font-size: 10px; line-height: 1; }
+
+.sub-btn.active {
+  background: var(--surface2);
+  border-color: var(--accent-sub);
+  color: var(--accent-sub);
+}
+
+.sub-btn:active { background: var(--surface2); }
+
+/* ---- Beat Indicators ---- */
+.beat-indicators {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 48px;
+  position: relative;
+}
+.beat-dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--surface2);
+  transition: all 0.08s;
+  position: relative;
+}
+.beat-dot.downbeat { width: 24px; height: 24px; }
+.beat-dot.active {
+  transform: scale(1.5);
+  background: var(--accent-beat);
+  box-shadow: 0 0 16px var(--accent-beat);
+}
+.beat-dot.active.downbeat {
+  background: var(--accent-downbeat);
+  box-shadow: 0 0 20px var(--accent-downbeat);
+}
+.beat-dot.sub-beat {
+  width: 8px;
+  height: 8px;
+  opacity: 0.4;
+}
+.beat-dot.sub-active {
+  opacity: 1;
+  background: var(--accent-sub);
+  box-shadow: 0 0 8px var(--accent-sub);
+}
+
+/* ---- Sub-division row under dots ---- */
+.sub-indicators {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  min-height: 16px;
+  margin-top: -12px;
+}
+.sub-indicator {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--surface2);
+  transition: all 0.08s;
+}
+.sub-indicator.active {
+  background: var(--accent-sub);
+  box-shadow: 0 0 6px var(--accent-sub);
+  transform: scale(1.6);
+}
+
+/* ---- Play Button ---- */
+.play-section {
+  display: flex;
+  gap: 12px;
+}
+
+.btn-play {
+  flex: 1;
+  height: 64px;
+  border-radius: var(--radius);
+  border: none;
+  background: var(--btn-play);
+  color: #fff;
+  font-size: 20px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+  transition: background 0.15s, transform 0.1s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.btn-play:active { transform: scale(0.97); }
+.btn-play.running {
+  background: var(--btn-stop);
+}
+.btn-play.running:active { background: var(--btn-stop-hover); }
+
+.play-icon {
+  width: 0;
+  height: 0;
+  border-style: solid;
+  transition: all 0.15s;
+}
+.play-icon.stop {
+  border-width: 0 0 0 20px;
+  border-color: transparent transparent transparent #fff;
+}
+.play-icon.play {
+  border-width: 0;
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  background: #fff;
+}
+
+.btn-tap {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius);
+  border: 2px solid var(--border);
+  background: var(--surface);
+  color: var(--text2);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.1s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.btn-tap:active { background: var(--surface2); }
+.btn-tap .tap-icon { font-size: 20px; line-height: 1; }
+.btn-tap.flash { background: var(--accent-beat); color: #fff; border-color: var(--accent-beat); }
+
+/* ---- Measure / Beat Text ---- */
+.measure-info {
+  text-align: center;
+  font-size: 13px;
+  color: var(--text2);
+  font-variant-numeric: tabular-nums;
+  min-height: 20px;
+}
+.measure-info span {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 360px) {
+  .app { gap: 14px; }
+  .bpm-display { font-size: clamp(60px, 18vw, 80px); }
+  .btn-bpm { width: 40px; height: 40px; font-size: 20px; }
+  .beat-dot { width: 16px; height: 16px; }
+  .beat-dot.downbeat { width: 20px; height: 20px; }
+  .btn-play { height: 56px; font-size: 18px; }
+  .btn-tap { width: 56px; height: 56px; }
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- BPM Display -->
+  <div class="bpm-section">
+    <div class="bpm-display" id="bpmDisplay">120</div>
+    <div class="bpm-label">BPM</div>
+  </div>
+
+  <!-- BPM Controls -->
+  <div class="bpm-controls">
+    <button class="btn-bpm" id="btnMinus" aria-label="Decrease BPM">−</button>
+    <div class="bpm-slider-wrap">
+      <input type="range" class="bpm-slider" id="bpmSlider" min="20" max="300" value="120" step="1">
+    </div>
+    <button class="btn-bpm" id="btnPlus" aria-label="Increase BPM">+</button>
+  </div>
+
+  <!-- Settings -->
+  <div class="settings-row">
+    <div class="setting-group">
+      <div class="setting-label">Time Signature</div>
+      <div class="select-wrap">
+        <select id="timeSig">
+          <option value="2,4">2/4</option>
+          <option value="3,4">3/4</option>
+          <option value="4,4" selected>4/4</option>
+          <option value="5,4">5/4</option>
+          <option value="6,8">6/8</option>
+          <option value="7,8">7/8</option>
+          <option value="9,8">9/8</option>
+          <option value="12,8">12/8</option>
+        </select>
+      </div>
+    </div>
+    <div class="setting-group">
+      <div class="setting-label">Subdivision</div>
+      <div class="sub-buttons" id="subButtons">
+        <button class="sub-btn active" data-sub="1">
+          <span class="sub-icon">♩</span>
+          <span class="sub-label">¼</span>
+        </button>
+        <button class="sub-btn" data-sub="2">
+          <span class="sub-icon">♪</span>
+          <span class="sub-label">⅛</span>
+        </button>
+        <button class="sub-btn" data-sub="3">
+          <span class="sub-icon">🎵</span>
+          <span class="sub-label">triplet</span>
+        </button>
+        <button class="sub-btn" data-sub="4">
+          <span class="sub-icon">♬</span>
+          <span class="sub-label">¹⁄₁₆</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Beat Indicators -->
+  <div>
+    <div class="beat-indicators" id="beatIndicators"></div>
+    <div class="sub-indicators" id="subIndicators"></div>
+  </div>
+
+  <!-- Measure Info -->
+  <div class="measure-info" id="measureInfo">Beat <span>1</span> of <span>4</span></div>
+
+  <!-- Play + Tap -->
+  <div class="play-section">
+    <button class="btn-play" id="btnPlay">
+      <span class="play-icon stop" id="playIcon"></span>
+      <span id="btnLabel">Start</span>
+    </button>
+    <button class="btn-tap" id="btnTap">
+      <span class="tap-icon">👆</span>
+      <span>Tap</span>
+    </button>
+  </div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  // ─── DOM refs ────────────────────────────────────────
+  const bpmDisplay   = document.getElementById('bpmDisplay');
+  const bpmSlider    = document.getElementById('bpmSlider');
+  const btnMinus     = document.getElementById('btnMinus');
+  const btnPlus      = document.getElementById('btnPlus');
+  const timeSigSel   = document.getElementById('timeSig');
+  const subButtons   = document.getElementById('subButtons');
+  const beatDots     = document.getElementById('beatIndicators');
+  const subDots      = document.getElementById('subIndicators');
+  const measureInfo  = document.getElementById('measureInfo');
+  const btnPlay      = document.getElementById('btnPlay');
+  const playIcon     = document.getElementById('playIcon');
+  const btnLabel     = document.getElementById('btnLabel');
+  const btnTap       = document.getElementById('btnTap');
+
+  // ─── State ───────────────────────────────────────────
+  let bpm            = 120;
+  let beatsPerMeasure = 4;
+  let subdivision    = 1;   // 1=quarter, 2=eighth, 3=triplet, 4=sixteenth
+  let isRunning      = false;
+  let audioCtx       = null;
+
+  // Scheduler state
+  let nextStepTime   = 0;         // AudioContext time of next step
+  let currentStep    = 0;         // 0 .. (beatsPerMeasure * subdivision) - 1
+  let scheduleAhead  = 0.1;       // seconds to schedule ahead
+  let timerID        = null;
+  const interval     = 25;        // scheduler interval in ms
+
+  // Tap tempo
+  let tapTimes       = [];
+  const TAP_WINDOW   = 2000;      // ms — ignore taps older than this
+
+  // ─── Audio ───────────────────────────────────────────
+  function getAudioCtx() {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+    return audioCtx;
+  }
+
+  function playClick(time, type) {
+    // type: 'downbeat' | 'beat' | 'sub'
+    const ctx = getAudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    let freq, vol, dur;
+    switch (type) {
+      case 'downbeat':
+        freq = 700; vol = 0.45; dur = 0.06;
+        osc.type = 'triangle';
+        break;
+      case 'beat':
+        freq = 1000; vol = 0.30; dur = 0.04;
+        osc.type = 'sine';
+        break;
+      case 'sub':
+        freq = 1400; vol = 0.12; dur = 0.025;
+        osc.type = 'sine';
+        break;
+    }
+
+    osc.frequency.setValueAtTime(freq, time);
+    gain.gain.setValueAtTime(vol, time);
+    gain.gain.exponentialRampToValueAtTime(0.001, time + dur);
+
+    osc.start(time);
+    osc.stop(time + dur);
+  }
+
+  // ─── Beat Indicator UI ───────────────────────────────
+  function buildBeatDots() {
+    beatDots.innerHTML = '';
+    for (let i = 0; i < beatsPerMeasure; i++) {
+      const dot = document.createElement('div');
+      dot.className = 'beat-dot' + (i === 0 ? ' downbeat' : '');
+      dot.dataset.beat = i;
+      beatDots.appendChild(dot);
+    }
+  }
+
+  function buildSubDots() {
+    subDots.innerHTML = '';
+    if (subdivision <= 1) {
+      subDots.style.display = 'none';
+      return;
+    }
+    subDots.style.display = 'flex';
+    for (let i = 0; i < subdivision; i++) {
+      const dot = document.createElement('div');
+      dot.className = 'sub-indicator';
+      dot.dataset.sub = i;
+      subDots.appendChild(dot);
+    }
+  }
+
+  function updateBeatVisual(beat, sub) {
+    // Main beat dots
+    const dots = beatDots.querySelectorAll('.beat-dot');
+    dots.forEach(d => d.classList.remove('active'));
+    const activeDot = beatDots.querySelector(`[data-beat="${beat}"]`);
+    if (activeDot) activeDot.classList.add('active');
+
+    // Sub dots
+    if (subdivision > 1) {
+      const sdots = subDots.querySelectorAll('.sub-indicator');
+      sdots.forEach(d => d.classList.remove('active'));
+      const activeSub = subDots.querySelector(`[data-sub="${sub}"]`);
+      if (activeSub) activeSub.classList.add('active');
+    }
+  }
+
+  function updateMeasureInfo(beat) {
+    measureInfo.innerHTML = `Beat <span>${beat + 1}</span> of <span>${beatsPerMeasure}</span>`;
+  }
+
+  // ─── Scheduler ───────────────────────────────────────
+  function nextStep() {
+    // Advance step
+    const stepsPerMeasure = beatsPerMeasure * subdivision;
+
+    const beat = Math.floor(currentStep / subdivision);
+    const sub  = currentStep % subdivision;
+
+    // Determine click type
+    let clickType;
+    if (beat === 0 && sub === 0) {
+      clickType = 'downbeat';
+    } else if (sub === 0) {
+      clickType = 'beat';
+    } else {
+      clickType = 'sub';
+    }
+
+    playClick(nextStepTime, clickType);
+    updateBeatVisual(beat, sub);
+    updateMeasureInfo(beat);
+
+    // Flash BPM display
+    bpmDisplay.classList.add('active');
+    setTimeout(() => bpmDisplay.classList.remove('active'), 80);
+
+    // Advance
+    currentStep = (currentStep + 1) % stepsPerMeasure;
+    const stepDuration = 60 / bpm / subdivision;
+    nextStepTime += stepDuration;
+  }
+
+  function scheduler() {
+    while (nextStepTime < getAudioCtx().currentTime + scheduleAhead) {
+      nextStep();
+    }
+    timerID = setTimeout(scheduler, interval);
+  }
+
+  function start() {
+    const ctx = getAudioCtx();
+    if (ctx.state === 'suspended') ctx.resume();
+
+    // Start slightly in the future so the first beat lands on time
+    nextStepTime = ctx.currentTime + 0.05;
+    currentStep = 0;
+    isRunning = true;
+
+    updateUIState();
+    updateBeatVisual(0, 0);
+    updateMeasureInfo(0);
+    scheduler();
+  }
+
+  function stop() {
+    if (timerID) {
+      clearTimeout(timerID);
+      timerID = null;
+    }
+    isRunning = false;
+
+    // Clear visuals
+    beatDots.querySelectorAll('.beat-dot').forEach(d => d.classList.remove('active'));
+    subDots.querySelectorAll('.sub-indicator').forEach(d => d.classList.remove('active'));
+    measureInfo.innerHTML = 'Stopped';
+
+    updateUIState();
+  }
+
+  function toggle() {
+    if (isRunning) {
+      stop();
+    } else {
+      start();
+    }
+  }
+
+  // ─── UI Updates ──────────────────────────────────────
+  function updateUIState() {
+    if (isRunning) {
+      btnPlay.classList.add('running');
+      playIcon.classList.remove('stop');
+      playIcon.classList.add('play');
+      btnLabel.textContent = 'Stop';
+    } else {
+      btnPlay.classList.remove('running');
+      playIcon.classList.remove('play');
+      playIcon.classList.add('stop');
+      btnLabel.textContent = 'Start';
+    }
+  }
+
+  function updateBPM(newBpm) {
+    bpm = Math.max(20, Math.min(300, newBpm));
+    bpmDisplay.textContent = bpm;
+    bpmSlider.value = bpm;
+  }
+
+  function updateTimeSig() {
+    const [beats] = timeSigSel.value.split(',').map(Number);
+    beatsPerMeasure = beats;
+    buildBeatDots();
+    if (isRunning) {
+      // Wrap currentStep to fit within the new measure length
+      const newSteps = beatsPerMeasure * subdivision;
+      currentStep = currentStep % newSteps;
+    } else {
+      updateMeasureInfo(0);
+    }
+  }
+
+  function updateSubdivision(sub) {
+    const oldSub = subdivision;
+    subdivision = sub;
+    buildSubDots();
+
+    // If running, snap to nearest beat boundary in the new subdivision scheme
+    if (isRunning) {
+      const currentBeat = Math.floor(currentStep / oldSub);
+      currentStep = currentBeat * subdivision;
+    }
+
+    // Update button states
+    subButtons.querySelectorAll('.sub-btn').forEach(btn => {
+      btn.classList.toggle('active', Number(btn.dataset.sub) === sub);
+    });
+  }
+
+  function updateAllVisuals() {
+    buildBeatDots();
+    buildSubDots();
+    updateUIState();
+    bpmDisplay.textContent = bpm;
+    bpmSlider.value = bpm;
+    if (!isRunning) {
+      const dots = beatDots.querySelectorAll('.beat-dot');
+      dots.forEach(d => d.classList.remove('active'));
+      updateMeasureInfo(0);
+    }
+  }
+
+  // ─── Tap Tempo ───────────────────────────────────────
+  function handleTap() {
+    const now = Date.now();
+    tapTimes.push(now);
+
+    // Remove old taps
+    tapTimes = tapTimes.filter(t => now - t < TAP_WINDOW);
+
+    // Flash button
+    btnTap.classList.add('flash');
+    setTimeout(() => btnTap.classList.remove('flash'), 100);
+
+    if (tapTimes.length < 2) return;
+
+    // Calculate intervals between consecutive taps
+    const intervals = [];
+    for (let i = 1; i < tapTimes.length; i++) {
+      intervals.push(tapTimes[i] - tapTimes[i - 1]);
+    }
+
+    // Average interval
+    const avgMs = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+    const avgBpm = Math.round(60000 / avgMs);
+
+    updateBPM(Math.max(20, Math.min(300, avgBpm)));
+  }
+
+  function resetTap() {
+    tapTimes = [];
+  }
+
+  // ─── Event Listeners ────────────────────────────────
+  bpmSlider.addEventListener('input', () => {
+    updateBPM(Number(bpmSlider.value));
+    resetTap();
+  });
+
+  btnMinus.addEventListener('click', () => {
+    updateBPM(bpm - 1);
+    resetTap();
+  });
+
+  btnPlus.addEventListener('click', () => {
+    updateBPM(bpm + 1);
+    resetTap();
+  });
+
+  // Long-press for rapid BPM change
+  let longPressTimer = null;
+  function startLongPress(delta) {
+    longPressTimer = setInterval(() => {
+      updateBPM(bpm + delta);
+    }, 50);
+  }
+  function stopLongPress() {
+    if (longPressTimer) {
+      clearInterval(longPressTimer);
+      longPressTimer = null;
+    }
+  }
+
+  btnMinus.addEventListener('pointerdown', () => startLongPress(-1));
+  btnMinus.addEventListener('pointerup', stopLongPress);
+  btnMinus.addEventListener('pointerleave', stopLongPress);
+  btnMinus.addEventListener('pointercancel', stopLongPress);
+
+  btnPlus.addEventListener('pointerdown', () => startLongPress(1));
+  btnPlus.addEventListener('pointerup', stopLongPress);
+  btnPlus.addEventListener('pointerleave', stopLongPress);
+  btnPlus.addEventListener('pointercancel', stopLongPress);
+
+  timeSigSel.addEventListener('change', () => {
+    updateTimeSig();
+    resetTap();
+  });
+
+  subButtons.addEventListener('click', (e) => {
+    const btn = e.target.closest('.sub-btn');
+    if (!btn) return;
+    updateSubdivision(Number(btn.dataset.sub));
+  });
+
+  btnPlay.addEventListener('click', toggle);
+
+  btnTap.addEventListener('click', handleTap);
+
+  // Keyboard controls
+  document.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'SELECT') return;
+    switch (e.code) {
+      case 'Space':
+        e.preventDefault();
+        toggle();
+        break;
+      case 'ArrowRight':
+        e.preventDefault();
+        updateBPM(bpm + 1);
+        resetTap();
+        break;
+      case 'ArrowLeft':
+        e.preventDefault();
+        updateBPM(bpm - 1);
+        resetTap();
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        updateBPM(bpm + 5);
+        resetTap();
+        break;
+      case 'ArrowDown':
+        e.preventDefault();
+        updateBPM(bpm - 5);
+        resetTap();
+        break;
+    }
+  });
+
+  // Prevent double-tap zoom on buttons
+  document.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('touchstart', function(e) {
+      if (e.target === this) e.preventDefault();
+    }, { passive: false });
+  });
+
+  // ─── Init ────────────────────────────────────────────
+  updateAllVisuals();
+})();
+</script>
+
+</body>
+</html>
