@@ -49,6 +49,11 @@ body {
   padding: 12px;
 }
 
+button {
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+}
+
 .app {
   width: 100%;
   max-width: 420px;
@@ -802,9 +807,9 @@ body {
     updateSubdivision(Number(btn.dataset.sub));
   });
 
-  btnPlay.addEventListener('click', toggle);
+  btnPlay.addEventListener('pointerup', (e) => { e.preventDefault(); toggle(); });
 
-  btnTap.addEventListener('click', handleTap);
+  btnTap.addEventListener('pointerup', (e) => { e.preventDefault(); handleTap(); });
 
   // Keyboard controls
   document.addEventListener('keydown', (e) => {
@@ -835,13 +840,6 @@ body {
         resetTap();
         break;
     }
-  });
-
-  // Prevent double-tap zoom on buttons
-  document.querySelectorAll('button').forEach(btn => {
-    btn.addEventListener('touchstart', function(e) {
-      if (e.target === this) e.preventDefault();
-    }, { passive: false });
   });
 
   // ─── Init ────────────────────────────────────────────
