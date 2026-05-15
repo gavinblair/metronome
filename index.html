@@ -685,7 +685,8 @@ button {
   function updateTimeSig() {
     const [beats] = timeSigSel.value.split(',').map(Number);
     beatsPerMeasure = beats;
-    buildBeatDots();
+    // Defer DOM mutation so it doesn't interfere with iOS touch event processing
+    requestAnimationFrame(() => buildBeatDots());
     if (isRunning) {
       // Wrap currentStep to fit within the new measure length
       const newSteps = beatsPerMeasure * subdivision;
@@ -698,7 +699,7 @@ button {
   function updateSubdivision(sub) {
     const oldSub = subdivision;
     subdivision = sub;
-    buildSubDots();
+    requestAnimationFrame(() => buildSubDots());
 
     // If running, snap to nearest beat boundary in the new subdivision scheme
     if (isRunning) {
@@ -807,9 +808,27 @@ button {
     updateSubdivision(Number(btn.dataset.sub));
   });
 
-  btnPlay.addEventListener('pointerup', (e) => { e.preventDefault(); toggle(); });
+  // Debounced wrappers — prevents double-fire from pointerup + click on iOS
+  let _lastToggle = 0;
+  let _lastTap = 0;
+  btnPlay.addEventListener('pointerup', () => {
+    const now = Date.now();
+    if (now - _lastToggle < 400) return;
+    _lastToggle = now;
+    toggle();
+  });
+  btnPlay.addEventListener('click', (e) => {
+    // Suppress synthetic click if pointerup already handled it
+    if (Date.now() - _lastToggle < 400) { e.preventDefault(); return; }
+    toggle();
+  });
 
-  btnTap.addEventListener('pointerup', (e) => { e.preventDefault(); handleTap(); });
+  btnTap.addEventListener('pointerup', () => {
+    const now = Date.now();
+    if (now - _lastTap < 400) return;
+    _lastTap = now;
+    handleTap();
+  });
 
   // Keyboard controls
   document.addEventListener('keydown', (e) => {
